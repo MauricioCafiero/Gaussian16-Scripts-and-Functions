@@ -1,0 +1,107 @@
+function runall {
+    if [ -z "$1" ]; then
+        for file in $(ls *.com); do
+            submit_g16.sh $file
+        done
+    else
+    	numcores=$1
+        for file in $(ls *.com); do
+            submit_g16.sh $file $numcores
+        done
+    fi
+}
+
+function geten {
+    if [ -z "$1" ]; then
+        for file in $(ls *.log); do
+            grep "SCF Done" $file
+        done
+    elif [ $1 = -c ]; then
+	if [ -z "$2" ]; then
+            for ifile in $(ls *.log); do
+                grep "SCF Done" $ifile | cut -d ' ' -f8
+	    done
+	else
+            grep "SCF Done" $2 | cut -d ' ' -f8
+        fi
+    else
+    	grep "SCF Done" $1
+    fi
+}
+
+function geom {
+    local OPTIND opt gstr
+    man='show options : -m(max force), -r(rms force), -d(max displacement), -a(rms displacement)'
+    if [ -z "$1" ]; then
+	echo $man
+    else
+        while getopts ":mrda" opt; do
+            case $opt in
+                m  ) gstr="Maximum Force" ;;  
+                r  ) gstr="RMS     Force" ;;  
+                d  ) gstr="Maximum Displacement" ;;  
+                a  ) gstr="RMS     Displacement" ;;
+	        \? ) echo $man
+	    esac
+        done
+	shift $(($OPTIND - 1))
+        
+	if [ -z "$1" ]; then
+	    echo missing file to search
+        elif [ -z "$gstr" ]; then
+	    echo invalid search option
+	else
+            grep "$gstr" $1
+        fi
+    fi
+    
+}
+
+function cleang16scratch {
+    find $GAUSS_SCRDIR ! -type d -name 'Gau-*' -mtime +1 -delete
+}
+
+function cg16ch {
+    sIFS=$IFS
+    IFS=:
+    PS3="enter choice "
+    exts='slurm:chk:log:quit'
+    echo choose a type of file to clean
+    select ext in $exts; do
+	wc="*.$ext"
+	if [ $ext = quit ]; then
+	     echo quitting
+	     break
+	elif [ -z $(ls $wc) ]; then
+	    echo no $ext files present
+	else
+	    echo removed "$wc"
+	    rm $wc
+	fi
+    done
+    IFS=$sIFS
+}
+
+function cg16all {
+    local OPTIND opt
+    man='specify files to remove: -s(slurm), -c(chk), -f(fchk), -l(log), -k(cube)'
+    if [ -z "$1" ]; then
+	echo $man
+    else
+        while getopts ":scflk" opt; do
+            case $opt in
+                s  ) rm *.slurm 
+		    echo removing slurm files ;;
+	        c  ) rm *.chk 
+		    echo removing chk files ;;
+	        f  ) rm *.fchk 
+		    echo removing fchk files ;;
+	        l  ) rm *.log 
+		    echo removing log files ;;
+	        k  ) rm *.cube
+		    echo removing cube files ;;
+	        \? ) echo $man
+	    esac
+        done
+    fi
+}
